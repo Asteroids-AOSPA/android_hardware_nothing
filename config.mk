@@ -19,8 +19,16 @@ SYSTEM_EXT_PRIVATE_SEPOLICY_DIRS += $(HW_NOTHING_PATH)/sepolicy/DeviceExtras/pri
 SYSTEM_EXT_PUBLIC_SEPOLICY_DIRS += $(HW_NOTHING_PATH)/sepolicy/DeviceExtras/public
 endif
 
+ifneq ($(filter HieroGlyph$(PRODUCT_DEVICE) ParanoidGlyph%,$(PRODUCT_PACKAGES)),)
+
+SYSTEM_EXT_PRIVATE_SEPOLICY_DIRS += $(HW_NOTHING_PATH)/sepolicy/glyph/private
+BOARD_VENDOR_SEPOLICY_DIRS += $(HW_NOTHING_PATH)/sepolicy/glyph/vendor
+SYSTEM_EXT_PUBLIC_SEPOLICY_DIRS += $(HW_NOTHING_PATH)/sepolicy/glyph/public
+
 ifneq ($(filter HieroGlyph$(PRODUCT_DEVICE) ,$(PRODUCT_PACKAGES)),)
-SYSTEM_EXT_PRIVATE_SEPOLICY_DIRS += $(HW_NOTHING_PATH)/sepolicy/HieroGlyph/private
+SYSTEM_EXT_PRIVATE_SEPOLICY_DIRS += $(HW_NOTHING_PATH)/sepolicy/glyph/HieroGlyph/private
+endif
+
 endif
 
 ifneq ($(filter AssistKey ,$(PRODUCT_PACKAGES)),)

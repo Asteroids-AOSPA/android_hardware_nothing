@@ -1,0 +1,3 @@
+binder_call(glyph_app, hal_matrix_leds)
+binder_call(hal_matrix_leds, glyph_app)
+allow hieroglyph_app hal_matrix_leds_service:service_manager find;
