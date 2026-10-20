@@ -5,6 +5,7 @@
 
 package org.lineageos.settings.doze
 
+import android.app.KeyguardManager
 import android.content.Context
 import android.graphics.PixelFormat
 import android.graphics.Rect
@@ -20,6 +21,7 @@ import android.window.OnBackInvokedDispatcher
 
 class TouchBlocker(private val context: Context) {
     private val windowManager = context.getSystemService(WindowManager::class.java)!!
+    private val keyguardManager = context.getSystemService(KeyguardManager::class.java)
     private val handler = Handler(Looper.getMainLooper())
     private var blockerLayout: View? = null
     private var isBlockerAdded = false
@@ -88,7 +90,15 @@ class TouchBlocker(private val context: Context) {
     }
 
     fun enable() {
+        if (keyguardManager?.isKeyguardLocked == false) {
+            Log.d(TAG, "enable() skipped: device is not locked")
+            return
+        }
         handler.post {
+            if (keyguardManager?.isKeyguardLocked == false) {
+                Log.d(TAG, "enable() skipped on UI thread: device is not locked")
+                return@post
+            }
             if (!isBlockerAdded) {
                 blockerLayout = createBlockerView()
                 val params = WindowManager.LayoutParams(

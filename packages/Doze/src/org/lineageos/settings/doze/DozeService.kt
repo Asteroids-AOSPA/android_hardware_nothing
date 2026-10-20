@@ -5,17 +5,36 @@
 
 package org.lineageos.settings.doze
 
+import android.app.KeyguardManager
 import android.app.Service
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
 import android.util.Log
 
 class DozeService : Service() {
     private lateinit var pocketSensor: PocketSensor
+    private val keyguardManager by lazy { getSystemService(KeyguardManager::class.java) }
+
+    private val keyguardLockedStateListener =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            KeyguardManager.KeyguardLockedStateListener { isLocked ->
+                Log.d(TAG, "Keyguard locked state changed: isLocked=$isLocked")
+                if (Utils.isPocketEnabled(this)) {
+                    if (isLocked) {
+                        pocketSensor.onKeyguardLocked()
+                    } else {
+                        pocketSensor.onUserUnlocked()
+                    }
+                }
+            }
+        } else {
+            null
+        }
 
     private val screenStateReceiver =
         object : BroadcastReceiver() {
@@ -23,6 +42,7 @@ class DozeService : Service() {
                 when (intent.action) {
                     Intent.ACTION_SCREEN_ON -> onDisplayOn()
                     Intent.ACTION_SCREEN_OFF -> onDisplayOff()
+                    Intent.ACTION_USER_PRESENT -> onUserUnlocked()
                 }
             }
         }
@@ -39,8 +59,17 @@ class DozeService : Service() {
         val screenStateFilter = IntentFilter().apply {
             addAction(Intent.ACTION_SCREEN_ON)
             addAction(Intent.ACTION_SCREEN_OFF)
+            addAction(Intent.ACTION_USER_PRESENT)
         }
         registerReceiver(screenStateReceiver, screenStateFilter)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && keyguardLockedStateListener != null) {
+            try {
+                keyguardManager?.addKeyguardLockedStateListener(mainExecutor, keyguardLockedStateListener)
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to register KeyguardLockedStateListener", e)
+            }
+        }
 
         updateSensors()
     }
@@ -53,6 +82,13 @@ class DozeService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         unregisterReceiver(screenStateReceiver)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && keyguardLockedStateListener != null) {
+            try {
+                keyguardManager?.removeKeyguardLockedStateListener(keyguardLockedStateListener)
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to unregister KeyguardLockedStateListener", e)
+            }
+        }
         pocketSensor.disable()
     }
 
@@ -80,6 +116,12 @@ class DozeService : Service() {
             pocketSensor.onDisplayOff()
         } else {
             pocketSensor.disable()
+        }
+    }
+
+    private fun onUserUnlocked() {
+        if (Utils.isPocketEnabled(this)) {
+            pocketSensor.onUserUnlocked()
         }
     }
 
