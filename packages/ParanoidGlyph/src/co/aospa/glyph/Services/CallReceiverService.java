@@ -50,10 +50,12 @@ public class CallReceiverService extends InCallService {
 
     private int contactId = 0;
     private String callingPkg = null;
+    private volatile boolean mIsRinging = false;
 
     private final Runnable playCall = new Runnable() {
         @Override
         public void run() {
+            if (!mIsRinging) return;
             if (contactId != 0
                     && SettingsManager.contactHasGlyphCallConfig(contactId)) {
                 AnimationManager.playCall(
@@ -105,15 +107,18 @@ public class CallReceiverService extends InCallService {
         });
     }
 
-    private void handleRingingCall(Call call) {
-        if (StatusManager.isCallLedEnabled()) return;
+    private synchronized void handleRingingCall(Call call) {
+        if (mIsRinging) return;
+        mIsRinging = true;
+        StatusManager.setCallLedEnabled(true);
         getCallingPkg(call);
         final Call.Details details = call.getDetails();
-        AnimationManager.submit(() -> {
-            if (StatusManager.isCallLedEnabled()) return;
+        mThreadHandler.post(() -> {
+            if (!mIsRinging) return;
             if (details != null) {
                 tryContactId(details);
             }
+            if (!mIsRinging) return;
             playCall.run();
         });
     }
@@ -162,7 +167,7 @@ public class CallReceiverService extends InCallService {
         if (DEBUG) Log.d(TAG, "Destroying service");
         mAudioManager.removeOnModeChangedListener(mAudioManagerOnModeChangedListener);
         disableCallAnimation();
-        thread.quit();
+        thread.quitSafely();
         super.onDestroy();
     }
 
@@ -197,8 +202,9 @@ public class CallReceiverService extends InCallService {
 
     }
 
-    private void disableCallAnimation() {
+    private synchronized void disableCallAnimation() {
         if (DEBUG) Log.d(TAG, "disableCallAnimation");
+        mIsRinging = false;
         mThreadHandler.removeCallbacksAndMessages(null);
         contactId = 0;
         callingPkg = null;

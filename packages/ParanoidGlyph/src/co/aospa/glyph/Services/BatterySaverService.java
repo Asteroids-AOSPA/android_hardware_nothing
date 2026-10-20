@@ -47,6 +47,7 @@ public class BatterySaverService extends Service {
     @Override
     public void onCreate() {
         pm = (PowerManager) this.getSystemService(Context.POWER_SERVICE);
+        trackBatterySaver = SettingsManager.isGlyphBatterySaverEnabled();
         registerReceiver(powerSaveReceiver,
                 new IntentFilter(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED));
         updateStatus();
@@ -56,6 +57,8 @@ public class BatterySaverService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (intent != null && intent.getAction() != null && "co.aospa.glyph.UPDATE_BATTERY_SAVER".equals(intent.getAction())) {
             trackBatterySaver = intent.getBooleanExtra("status", false);
+        } else {
+            trackBatterySaver = SettingsManager.isGlyphBatterySaverEnabled();
         }
         updateStatus();
         return START_STICKY;

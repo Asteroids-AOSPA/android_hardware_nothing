@@ -44,6 +44,22 @@ class ThirdPartyService : Service() {
         return binder
     }
 
+    override fun onUnbind(intent: Intent?): Boolean {
+        Log.d("ThirdPartyService", "onUnbind - cleaning up session")
+        StatusManager.setAnimationActive(false)
+        AnimationManager.clearLEDs()
+        releaseWakeLock()
+        return super.onUnbind(intent)
+    }
+
+    override fun onDestroy() {
+        Log.d("ThirdPartyService", "onDestroy - cleaning up session")
+        StatusManager.setAnimationActive(false)
+        AnimationManager.clearLEDs()
+        releaseWakeLock()
+        super.onDestroy()
+    }
+
     private fun acquireWakeLock() {
         if (wakeLock == null) {
             val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager

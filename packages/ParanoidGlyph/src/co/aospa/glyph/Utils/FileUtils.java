@@ -94,15 +94,14 @@ public final class FileUtils {
         return sFramePath;
     }
 
-    private static volatile int sCurrentMode = -1;
+    private static volatile long sLastModeWriteTime = 0;
 
     public static void setOperatingMode(int mode) {
-        if (sCurrentMode == mode) return;
         String modePath = getModePath();
         if (modePath != null && !modePath.isBlank()) {
             try (BufferedWriter writer = new BufferedWriter(new FileWriter(modePath))) {
                 writer.write(String.valueOf(mode));
-                sCurrentMode = mode;
+                sLastModeWriteTime = (mode == 1) ? android.os.SystemClock.uptimeMillis() : 0;
             } catch (Exception e) {
                 Log.w(TAG, "Could not set operating mode: " + mode, e);
             }
@@ -110,8 +109,17 @@ public final class FileUtils {
     }
 
     public static void writeLine(String fileName, String value) {
-        if (sCurrentMode != 1) {
-            setOperatingMode(1);
+        String modePath = getModePath();
+        if (modePath != null && !modePath.isBlank() && !modePath.equals(fileName)) {
+            long now = android.os.SystemClock.uptimeMillis();
+            if (now - sLastModeWriteTime > 1000) {
+                try (BufferedWriter writerMode = new BufferedWriter(new FileWriter(modePath))) {
+                    writerMode.write("1");
+                    sLastModeWriteTime = now;
+                } catch (Exception e) {
+                    Log.w(TAG, "Could not set operating mode", e);
+                }
+            }
         }
         try (BufferedWriter writerValue = new BufferedWriter(new FileWriter(fileName))) {
             writerValue.write(value);
